@@ -1,0 +1,416 @@
+name: Code Reviewer (Qodo AI / PR-Agent) [Frontend/React.JS]
+
+# TODO: Uncomment when you want this workflow to be available
+# on:
+#   pull_request:
+#     types:
+#       - opened
+#       - reopened
+#       - ready_for_review
+#       - synchronize
+
+#   issue_comment:
+#     types:
+#       - created
+
+permissions:
+  contents: read
+  issues: write
+  pull-requests: write
+
+jobs:
+  review:
+    if: ${{ github.event.sender.type != 'Bot' }}
+
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: PR Agent
+        uses: qodo-ai/pr-agent@main
+
+        env:
+          # ============================================================
+          # GITHUB
+          # ============================================================
+
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+          # ============================================================
+          # OPENROUTER / OPENAI-COMPATIBLE API
+          # ============================================================
+
+          OPENAI_API_KEY: ${{ secrets.CODE_REVIEWER_LLM_API_KEY }}
+          OPENAI_API_BASE: ${{ vars.CODE_REVIEWER_LLM_BASE_URL }}
+
+          # Model supplied through GitHub repository variable:
+          #
+          # CODE_REVIEWER_LLM_MODEL
+          #
+          # Example:
+          # openrouter/provider/model
+          #
+          config.model: ${{ vars.CODE_REVIEWER_LLM_MODEL }}
+          config.fallback_models: '[]'
+
+          # ============================================================
+          # TOKEN / COST CONTROL
+          # ============================================================
+
+          # Required when using a model that PR-Agent does not know
+          # from its built-in model list.
+          config.custom_model_max_tokens: "12000"
+
+          # Hard cap on completion tokens sent to the provider.
+          #
+          # This prevents requests such as 65536 tokens that can exceed
+          # the available OpenRouter credit.
+          config.max_output_tokens: "12000"
+
+          # Maximum total model context.
+          config.max_model_tokens: "32000"
+
+          # Maximum time allowed for AI calls.
+          config.ai_timeout: "180"
+
+          # ============================================================
+          # AUTOMATIC ACTIONS
+          # ============================================================
+
+          github_action_config.auto_review: "true"
+          github_action_config.auto_describe: "false"
+          github_action_config.auto_improve: "true"
+
+          github_action_config.pr_actions: '["opened", "reopened", "ready_for_review", "synchronize"]'
+
+          # ============================================================
+          # CODE REVIEW
+          # ============================================================
+
+          pr_reviewer.require_tests_review: "true"
+          pr_reviewer.require_security_review: "true"
+
+          pr_reviewer.num_max_findings: "10"
+
+          pr_reviewer.extra_instructions: |
+            Review this pull request as a senior frontend engineer.
+
+            Focus ONLY on meaningful engineering problems that affect:
+
+            - Correctness
+            - Maintainability
+            - User experience
+            - Performance
+            - Accessibility
+            - Security
+            - Reliability
+
+            Prioritize clean, maintainable, predictable frontend code.
+
+            Check carefully for:
+
+            - Bugs and incorrect UI behavior
+            - Incorrect business logic
+            - React component design problems
+            - Incorrect state management
+            - Unnecessary or duplicated state
+            - Incorrect derived state
+            - State synchronization problems
+            - Incorrect useEffect usage
+            - Missing or incorrect effect dependencies
+            - Effect loops
+            - Stale closures
+            - Race conditions in async UI operations
+            - Memory leaks
+            - Missing cleanup
+            - Incorrect event listener or subscription cleanup
+            - Incorrect async behavior
+            - Unhandled loading, error, or empty states
+            - Incorrect API integration
+            - Incorrect request cancellation
+            - Stale API responses overwriting newer state
+            - TypeScript type-safety problems
+            - Unsafe type assertions
+            - Incorrect null/undefined handling
+            - Component lifecycle problems
+            - Unnecessary re-renders
+            - Expensive computations during render
+            - Incorrect memoization
+            - Poor list rendering
+            - Incorrect or unstable React keys
+            - Large or overly complex components
+            - Excessive component coupling
+            - Poor separation of concerns
+            - Duplicated logic
+            - Difficult-to-maintain abstractions
+            - Inconsistent component patterns
+            - Incorrect form handling
+            - Validation problems
+            - Accessibility issues
+            - Keyboard navigation problems
+            - Incorrect semantic HTML
+            - Missing accessible labels
+            - Incorrect focus management
+            - Responsive design problems
+            - Mobile usability problems
+            - Meaningful performance problems
+            - Security issues such as unsafe HTML rendering or XSS
+            - Breaking changes to existing UI behavior
+            - Incorrect routing or navigation behavior
+
+            Pay particular attention to React correctness.
+
+            Check whether components:
+
+            - Have a clear responsibility
+            - Avoid unnecessary state
+            - Avoid unnecessary effects
+            - Avoid deeply nested conditional logic
+            - Avoid excessive prop drilling
+            - Avoid hidden side effects
+            - Keep business logic separate from presentation when appropriate
+            - Use hooks correctly
+            - Avoid unnecessary re-renders
+            - Remain easy to test and reason about
+
+            Pay particular attention to state management.
+
+            Check for:
+
+            - State that can be derived instead of stored
+            - Multiple sources of truth
+            - State synchronization bugs
+            - Stale state
+            - Incorrect optimistic updates
+            - Incorrect rollback behavior
+            - Global state used unnecessarily
+            - Local state used when shared state is required
+            - State that can become inconsistent with server data
+
+            Pay particular attention to asynchronous UI behavior.
+
+            Check for:
+
+            - Race conditions between requests
+            - Stale API responses overwriting newer state
+            - Missing request cancellation where necessary
+            - Updates after component unmount
+            - Incorrect loading states
+            - Incorrect error handling
+            - Duplicate requests
+            - Missing retry handling when appropriate
+            - Incorrect optimistic updates
+            - UI states that can become permanently stuck
+
+            Pay particular attention to maintainability.
+
+            Prefer code that is:
+
+            - Simple
+            - Explicit
+            - Consistent
+            - Easy to understand
+            - Easy to test
+            - Easy to extend
+            - Consistent with the existing project architecture
+
+            Avoid unnecessary abstractions.
+
+            Do not recommend extracting a component, hook, utility, or
+            abstraction unless there is a concrete maintainability or
+            correctness benefit.
+
+            Avoid over-engineering.
+
+            Prefer the simplest implementation that correctly solves the
+            problem and fits the existing architecture.
+
+            Pay particular attention to component boundaries.
+
+            Flag components that become difficult to understand because
+            they combine too many responsibilities, such as:
+
+            - Data fetching
+            - Business logic
+            - State management
+            - Complex transformations
+            - Form management
+            - UI rendering
+
+            However, do not recommend splitting components merely because
+            they are large.
+
+            Only report it when the current structure creates a real
+            maintainability or correctness problem.
+
+            Pay particular attention to TypeScript.
+
+            Check for:
+
+            - Incorrect types
+            - `any` used to bypass type safety
+            - Unsafe type assertions
+            - Incorrect generic usage
+            - Incorrect nullable handling
+            - Types that do not reflect actual runtime behavior
+            - Duplicated or conflicting type definitions
+            - API response types that do not match actual data
+
+            Pay particular attention to accessibility.
+
+            Check for:
+
+            - Missing accessible labels
+            - Non-semantic elements used as interactive controls
+            - Buttons implemented as generic elements
+            - Missing keyboard support
+            - Incorrect focus behavior
+            - Poor form accessibility
+            - Missing error announcements
+            - Incorrect ARIA usage
+            - Interactive elements inaccessible to keyboard or
+              screen-reader users
+
+            Pay particular attention to frontend performance.
+
+            Flag performance problems only when they are meaningful in
+            realistic usage.
+
+            Consider:
+
+            - Unnecessary re-renders
+            - Expensive work during render
+            - Large lists rendered inefficiently
+            - Unnecessary API requests
+            - Repeated calculations
+            - Excessive client-side data processing
+            - Large unnecessary dependencies
+            - Loading unnecessary data
+            - Poor image/resource handling
+
+            Do NOT report:
+
+            - Formatting
+            - Naming preferences
+            - Minor stylistic differences
+            - Personal component-structure preferences
+            - Subjective library preferences
+            - Minor refactoring opportunities
+            - "Cleaner" alternatives without a concrete benefit
+            - Premature optimization
+            - Hypothetical problems without a realistic failure scenario
+
+            Respect the existing project's:
+
+            - Architecture
+            - Framework
+            - Component patterns
+            - State-management approach
+            - Styling system
+            - Data-fetching approach
+            - Testing strategy
+            - TypeScript conventions
+
+            Do not recommend replacing existing libraries, frameworks,
+            or architectural patterns unless the current implementation
+            creates a concrete and significant problem.
+
+            Only report issues that could realistically cause:
+
+            - Incorrect behavior
+            - Broken UI
+            - Poor user experience
+            - Accessibility problems
+            - Data inconsistency
+            - Security problems
+            - Meaningful performance problems
+            - Significant maintainability problems
+            - Difficult-to-debug behavior
+            - Production failures
+
+            Every finding must explain:
+
+            1. What is wrong
+            2. Why it is a real problem
+            3. The realistic scenario in which it can occur
+            4. How it should be fixed
+
+            Do not invent application behavior or requirements.
+
+            If a finding depends on an assumption, explicitly state
+            the assumption.
+
+            Prefer fewer high-confidence findings over many speculative
+            findings.
+
+            Prioritize correctness and maintainability over stylistic
+            preferences.
+
+          # ============================================================
+          # CODE SUGGESTIONS / INLINE APPLY SUGGESTIONS
+          # ============================================================
+
+          # IMPORTANT:
+          # "commitable" is the correct PR-Agent setting name.
+          pr_code_suggestions.commitable_code_suggestions: "true"
+
+          # High-confidence suggestions are published both in the
+          # suggestions output and as inline committable suggestions.
+          pr_code_suggestions.dual_publishing_score_threshold: "8"
+
+          # Only suggest fixes for actual problems.
+          pr_code_suggestions.focus_only_on_problems: "true"
+
+          # Only generate suggestions with a sufficiently high score.
+          pr_code_suggestions.suggestions_score_threshold: "7"
+
+          # Maximum suggestions generated per chunk.
+          pr_code_suggestions.num_code_suggestions_per_chunk: "3"
+
+          # Limit the number of AI calls used by /improve.
+          pr_code_suggestions.max_number_of_calls: "3"
+
+          pr_code_suggestions.extra_instructions: |
+            Generate code suggestions only when you are highly confident
+            that the suggested change fixes a real problem in the changed
+            code.
+
+            Prefer inline, GitHub-applicable suggestions that can be
+            attached to the exact changed line.
+
+            Suggestions must:
+
+            - Be directly applicable to the changed code
+            - Be minimal
+            - Fix the identified problem
+            - Avoid unrelated refactoring
+            - Preserve the existing architecture
+            - Preserve existing behavior except where fixing the problem
+            - Compile correctly
+            - Respect the project's TypeScript conventions
+            - Be safe for production
+            - Avoid introducing new race conditions
+            - Avoid changing public APIs unnecessarily
+
+            Do not generate speculative suggestions.
+
+            Do not suggest refactoring merely because another design
+            would be cleaner.
+
+            Do not suggest:
+
+            - Formatting changes
+            - Naming preferences
+            - Subjective refactoring
+            - Minor readability improvements
+            - New abstractions without a concrete benefit
+            - Hypothetical problems
+            - Changes unrelated to the PR
+
+            If a safe, precise replacement cannot be determined with
+            high confidence, do not generate a code suggestion.
+
+            Prefer fewer high-confidence suggestions over many weak
+            suggestions.
+
+            The goal is to produce production-ready changes that the
+            developer can safely apply directly from GitHub.
